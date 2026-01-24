@@ -1,9 +1,12 @@
 import streamlit as st
 import google.generativeai as genai
 
-# Configuration de la page
-st.set_page_config(page_title="Mon IA Interactive", layout="centered")
-st.title("🤖 Mon Assistant Gemini")
+# Configuration de l'identité du site
+st.set_page_config(page_title="Digi-Sage", layout="centered", page_icon="🧠")
+st.title("🧙‍♂️ Digi-Sage")
+st.subheader("Ton compagnon pour naviguer dans le monde numérique avec conscience et autonomie.)
+
+# ... (le reste du code demeure identique)
 
 # Récupération sécurisée de votre clé API
 if "GOOGLE_API_KEY" in st.secrets:
