@@ -4,7 +4,7 @@ import google.generativeai as genai
 # Configuration de l'identité du site
 st.set_page_config(page_title="Digi-Sage", layout="centered", page_icon="🧠")
 st.title("🧙‍♂️ Digi-Sage")
-st.subheader("Ton compagnon pour naviguer dans le monde numérique avec conscience et autonomie.)
+st.subheader("Ton compagnon pour naviguer dans le monde numérique avec conscience et autonomie.")
 
 # ... (le reste du code demeure identique)
 
