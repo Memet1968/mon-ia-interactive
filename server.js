@@ -26,26 +26,48 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/clara", (_req, res) => {
-  res.json({ ok: true, hint: "Use POST /api/clara" });
-});
-
-app.post("/api/clara", async (req, res) => {
+app.get("/api/clara", async (req, res) => {
+  const text = typeof req.query?.text === "string" ? req.query.text : "";
+  if (!text) {
+    res.json({ ok: true, hint: "Use POST /api/clara or GET /api/clara?text=..." });
+    return;
+  }
   try {
-    const userMessages = Array.isArray(req.body?.messages) ? req.body.messages : [];
-
     const messages = [
       { role: "system", content: claraPrompt },
-      ...userMessages
+      { role: "user", content: text }
     ];
-
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages,
       max_tokens: 250,
       temperature: 0.6
     });
+    let reply = completion.choices?.[0]?.message?.content ?? "";
+    const shouldDisconnect = reply.includes("[DISCONNECT]");
+    if (shouldDisconnect) {
+      res.json({ text: "", disconnect: true });
+      return;
+    }
+    res.json({ text: reply, disconnect: false });
+  } catch (err) {
+    res.status(500).json({ error: "CLARA_FAILURE" });
+  }
+});
 
+app.post("/api/clara", async (req, res) => {
+  try {
+    const userMessages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+    const messages = [
+      { role: "system", content: claraPrompt },
+      ...userMessages
+    ];
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages,
+      max_tokens: 250,
+      temperature: 0.6
+    });
     let text = completion.choices?.[0]?.message?.content ?? "";
     const shouldDisconnect = text.includes("[DISCONNECT]");
     if (shouldDisconnect) {
