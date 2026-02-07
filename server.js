@@ -33,8 +33,13 @@ app.post("/api/clara", async (req, res) => {
       temperature: 0.6
     });
 
-    const text = completion.choices?.[0]?.message?.content ?? "";
-    res.json({ text });
+    let text = completion.choices?.[0]?.message?.content ?? "";
+    const shouldDisconnect = text.includes("[DISCONNECT]");
+    if (shouldDisconnect) {
+      res.json({ text: "", disconnect: true });
+      return;
+    }
+    res.json({ text, disconnect: false });
   } catch (err) {
     res.status(500).json({ error: "CLARA_FAILURE" });
   }
