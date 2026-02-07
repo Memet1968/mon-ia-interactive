@@ -5,6 +5,15 @@ import cors from "cors";
 import OpenAI from "openai";
 
 const app = express();
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use(cors());
 app.use(express.json({ limit: "64kb" }));
 
@@ -15,6 +24,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+app.get("/api/clara", (_req, res) => {
+  res.json({ ok: true, hint: "Use POST /api/clara" });
 });
 
 app.post("/api/clara", async (req, res) => {
