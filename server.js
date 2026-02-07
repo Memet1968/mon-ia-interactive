@@ -51,7 +51,10 @@ app.get("/api/clara", async (req, res) => {
     }
     res.json({ text: reply, disconnect: false });
   } catch (err) {
-    res.status(500).json({ error: "CLARA_FAILURE" });
+    res.status(500).json({
+      error: "CLARA_FAILURE",
+      detail: err?.message || String(err)
+    });
   }
 });
 
@@ -79,7 +82,10 @@ app.post("/api/clara", async (req, res) => {
     }
     res.json({ text, disconnect: false });
   } catch (err) {
-    res.status(500).json({ error: "CLARA_FAILURE" });
+    res.status(500).json({
+      error: "CLARA_FAILURE",
+      detail: err?.message || String(err)
+    });
   }
 });
 
