@@ -58,16 +58,19 @@ app.get("/api/clara", async (req, res) => {
 app.post("/api/clara", async (req, res) => {
   try {
     const userMessages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+
     const messages = [
       { role: "system", content: claraPrompt },
       ...userMessages
     ];
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages,
       max_tokens: 250,
       temperature: 0.6
     });
+
     let text = completion.choices?.[0]?.message?.content ?? "";
     const shouldDisconnect = text.includes("[DISCONNECT]");
     if (shouldDisconnect) {
