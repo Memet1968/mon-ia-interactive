@@ -20,15 +20,23 @@ const introLines = [
     cls: "clara"
   },
   {
-    text: "Tu entres dans une fiction opérationnelle. Ici, chaque mot a un coût.",
+    text: "Ton profil a été signalé. Mon organisation pense que tu peux tenir sous pression.",
     cls: "clara"
   },
   {
-    text: "Orion modélise les décisions humaines et les rend prévisibles.",
+    text: "Nous luttons contre Orion: un protocole mondial d'aliénation cognitive qui mesure, oriente, discipline et uniformise les humains.",
     cls: "clara glitch"
   },
   {
-    text: "Je suis ton interlocutrice dans cet univers virtuel. Pose ta question.",
+    text: "Menshen se présente comme l'alternative. C'est une autre architecture de contrôle.",
+    cls: "clara"
+  },
+  {
+    text: "Nous recrutons des témoins capables d'observer, documenter et transmettre des preuves sans se faire repérer.",
+    cls: "clara"
+  },
+  {
+    text: "Je vais t'évaluer. Réponds avec précision: acceptes-tu d'entrer dans la cellule de résistance ?",
     cls: "clara"
   }
 ];
@@ -58,6 +66,7 @@ async function typeLine(text, cls = "") {
     p.setAttribute("data-text", text);
   }
   output.appendChild(p);
+
   let buffer = "";
   for (const char of text) {
     buffer += char;
@@ -70,6 +79,7 @@ async function typeLine(text, cls = "") {
     }
     await sleep(12);
   }
+
   output.scrollTop = output.scrollHeight;
 }
 
@@ -98,6 +108,7 @@ function hideInput() {
 
 async function sendToClara(userText) {
   chatHistory.push({ role: "user", content: userText });
+
   const placeholder = document.createElement("p");
   placeholder.className = "line system";
   placeholder.textContent = "…";
@@ -107,14 +118,17 @@ async function sendToClara(userText) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
+
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: chatHistory }),
       signal: controller.signal
     });
+
     clearTimeout(timeoutId);
     const data = await res.json().catch(() => ({}));
+
     if (!res.ok) {
       placeholder.remove();
       const detail = data && data.detail ? String(data.detail) : "";
@@ -124,6 +138,7 @@ async function sendToClara(userText) {
       }
       return;
     }
+
     if (data && data.disconnect) {
       placeholder.remove();
       await typeLine("Très bien. Déconnexion sécurisée. À bientôt.", "system");
@@ -131,12 +146,15 @@ async function sendToClara(userText) {
       hideInput();
       return;
     }
+
     const reply = data && data.text ? data.text.trim() : "";
     placeholder.remove();
+
     if (!reply) {
       await typeLine("Réponse indisponible. Réessaie.", "warning");
       return;
     }
+
     chatHistory.push({ role: "assistant", content: reply });
     await typeLine(reply, "clara");
   } catch (err) {
@@ -144,21 +162,24 @@ async function sendToClara(userText) {
       const fallbackUrl = `${API_URL}?text=${encodeURIComponent(userText)}`;
       const res = await fetch(fallbackUrl, { method: "GET" });
       const data = await res.json().catch(() => ({}));
+
       placeholder.remove();
+
       if (data && data.disconnect) {
         await typeLine("Très bien. Déconnexion sécurisée. À bientôt.", "system");
         document.body.classList.add("blackout");
         hideInput();
         return;
       }
+
       const reply = data && data.text ? data.text.trim() : "";
       if (!reply) {
         await typeLine("Réponse indisponible. Réessaie.", "warning");
         return;
       }
+
       chatHistory.push({ role: "assistant", content: reply });
       await typeLine(reply, "clara");
-      return;
     } catch (_fallbackErr) {
       placeholder.remove();
       const msg = err && err.name === "AbortError"
@@ -182,9 +203,17 @@ async function startLogin() {
 async function startImmersion() {
   hideInput();
   glitchPulse();
-  await printLines(introLines);
-  state.mode = "ai";
-  showInput();
+  try {
+    await printLines(introLines);
+  } catch (_err) {
+    await typeLine("Canal direct instable, bascule en mode texte.", "warning");
+  } finally {
+    state.mode = "ai";
+    userInput.type = "text";
+    userInput.value = "";
+    await typeLine("> Canal direct Clara ouvert. Ecris ton message.", "system");
+    showInput();
+  }
 }
 
 async function handleLoginInput(value) {
@@ -209,6 +238,7 @@ async function handleLoginInput(value) {
 
 userInput.addEventListener("keydown", async (event) => {
   if (event.key !== "Enter" || state.busy) return;
+
   const value = userInput.value.trim();
   if (!value) return;
 
