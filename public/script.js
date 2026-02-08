@@ -9,44 +9,38 @@ const chatHistory = [];
 const state = {
   step: "login_id",
   mode: "login",
-  busy: false,
-  phase: "recrutement"
+  busy: false
 };
 
 const introLines = [
-  { text: "Connexion établie.", cls: "system" },
+  { text: "Connexion etablie.", cls: "system" },
   { text: "Interface Clara // Protocole Orion", cls: "clara" },
-  { text: "Statut narratif: PHASE 1 // RECRUTEMENT", cls: "system" },
   {
     text: "Bonjour. Je m'appelle Clara, mais c'est un pseudo.",
     cls: "clara"
   },
   {
-    text: "Ton profil nous intéresse.",
+    text: "Ton profil semble correspondre a une mission que nous voulons te confier.",
     cls: "clara"
   },
   {
-    text: "Notre organisation lutte contre Orion. Orion n'est pas un programme de sécurité. C'est un protocole mondial d'aliénation cognitive.",
+    text: "Orion est une infrastructure mondiale de controle cognitif: elle mesure les comportements, anticipe les choix et impose des decisions presentees comme naturelles.",
     cls: "clara glitch"
   },
   {
-    text: "Ils mesurent les comportements, orientent les choix, puis imposent des décisions présentées comme naturelles.",
+    text: "Le systeme transforme progressivement les citoyens en profils pilotables, sans violence visible.",
     cls: "clara"
   },
   {
-    text: "Menshen prétend s'y opposer, mais c'est une autre architecture de contrôle.",
+    text: "Menshen pretend s'y opposer, mais reproduit une autre forme de domination.",
     cls: "clara"
   },
   {
-    text: "Nous recrutons des témoins capables d'observer, de documenter et de transmettre des preuves.",
+    text: "Nous cherchons des temoins discrets capables d'observer, dater, recouper et transmettre des preuves.",
     cls: "clara"
   },
   {
-    text: "Canal officiel: bibliothecaire@protocoleorion2032.org",
-    cls: "system"
-  },
-  {
-    text: "Je vais t'évaluer. Souhaites-tu en savoir plus ?",
+    text: "Si tu acceptes, je t'explique comment participer sans te compromettre.",
     cls: "clara"
   }
 ];
@@ -116,18 +110,6 @@ function hideInput() {
   userInput.blur();
 }
 
-async function onAssistantReply(reply) {
-  const lower = reply.toLowerCase();
-
-  if (state.phase === "recrutement" && (lower.includes("acceptes") || lower.includes("participer") || lower.includes("rejoins"))) {
-    state.phase = "evaluation";
-    await typeLine("Statut narratif: PHASE 2 // EVALUATION", "system");
-  } else if (state.phase === "evaluation" && (lower.includes("premiere mission") || lower.includes("première mission") || lower.includes("transmets"))) {
-    state.phase = "mission";
-    await typeLine("Statut narratif: PHASE 3 // PREMIERE MISSION", "system");
-  }
-}
-
 async function sendToClara(userText) {
   chatHistory.push({ role: "user", content: userText });
 
@@ -179,7 +161,6 @@ async function sendToClara(userText) {
 
     chatHistory.push({ role: "assistant", content: reply });
     await typeLine(reply, "clara");
-    await onAssistantReply(reply);
   } catch (err) {
     placeholder.remove();
     const msg = err && err.name === "AbortError"
