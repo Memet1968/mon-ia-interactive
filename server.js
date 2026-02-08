@@ -54,7 +54,7 @@ async function generateWithHF(messages) {
       model: hfModel,
       messages: [{ role: "system", content: claraPrompt }, ...messages],
       temperature: 0.7,
-      max_tokens: 220
+      max_tokens: 700
     })
   });
 
