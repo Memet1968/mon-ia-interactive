@@ -174,6 +174,7 @@ async function sendToClara(userText) {
 
 async function startLogin() {
   await typeLine("PROTOCOLE ORION // TERMINAL", "system");
+  await typeLine("Tu es invité, entre un identifiant et le mot de passe de ton choix.", "system");
   await typeLine("Identifiant:", "system");
   showInput();
 }
