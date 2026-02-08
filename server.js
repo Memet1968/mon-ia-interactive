@@ -3,7 +3,7 @@ import path from "path";
 import express from "express";
 import cors from "cors";
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-1.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const app = express();
@@ -49,6 +49,7 @@ app.get("/api/clara", async (req, res) => {
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     const shouldDisconnect = reply.includes("[DISCONNECT]");
     if (shouldDisconnect) return res.json({ text: "", disconnect: true });
+    if (!reply) return res.json({ text: "", disconnect: false, debug: data });
     res.json({ text: reply, disconnect: false });
   } catch (err) {
     res.status(500).json({ error: "CLARA_FAILURE", detail: err?.message || String(err) });
@@ -78,6 +79,7 @@ app.post("/api/clara", async (req, res) => {
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     const shouldDisconnect = text.includes("[DISCONNECT]");
     if (shouldDisconnect) return res.json({ text: "", disconnect: true });
+    if (!text) return res.json({ text: "", disconnect: false, debug: data });
     res.json({ text, disconnect: false });
   } catch (err) {
     res.status(500).json({ error: "CLARA_FAILURE", detail: err?.message || String(err) });
