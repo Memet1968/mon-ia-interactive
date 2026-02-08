@@ -16,6 +16,7 @@ app.use((req, res, next) => {
 });
 app.use(cors());
 app.use(express.json({ limit: "64kb" }));
+app.use(express.static("public"));
 
 const promptPath = path.join(process.cwd(), "clara_prompt.txt");
 const claraPrompt = fs.readFileSync(promptPath, "utf8");
@@ -106,6 +107,10 @@ app.post("/api/clara", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "CLARA_FAILURE", detail: err?.message || String(err) });
   }
+});
+
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "index.html"));
 });
 
 const port = process.env.PORT || 3000;
