@@ -20,23 +20,27 @@ const introLines = [
     cls: "clara"
   },
   {
-    text: "Ton profil a été signalé. Mon organisation pense que tu peux tenir sous pression.",
+    text: "Ton profil nous intéresse.",
     cls: "clara"
   },
   {
-    text: "Nous luttons contre Orion: un protocole mondial d'aliénation cognitive qui mesure, oriente, discipline et uniformise les humains.",
+    text: "Notre organisation lutte contre Orion. Orion n’est pas un programme de sécurité. C’est un protocole mondial d’aliénation cognitive.",
     cls: "clara glitch"
   },
   {
-    text: "Menshen se présente comme l'alternative. C'est une autre architecture de contrôle.",
+    text: "Ils mesurent les comportements, orientent les choix, puis imposent des décisions présentées comme « naturelles ».",
     cls: "clara"
   },
   {
-    text: "Nous recrutons des témoins capables d'observer, documenter et transmettre des preuves sans se faire repérer.",
+    text: "Une autre organisation concurrente, Menshen, prétend s’y opposer, mais c’est une autre architecture de contrôle.",
     cls: "clara"
   },
   {
-    text: "Je vais t'évaluer. Réponds avec précision: acceptes-tu d'entrer dans la cellule de résistance ?",
+    text: "Nous cherchons des témoins capables d’observer, de documenter et de transmettre des preuves de ce complot mondial.",
+    cls: "clara"
+  },
+  {
+    text: "Ici, nous t’approchons. Souhaites-tu en savoir plus ?",
     cls: "clara"
   }
 ];
