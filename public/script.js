@@ -8,248 +8,30 @@ const chatHistory = [];
 
 const state = {
   step: "login_id",
-  invalidCount: 0,
-  awaitingQuestion: false,
-  currentNode: "start",
-  mode: "scripted"
+  mode: "login",
+  busy: false
 };
 
-const nodes = {
-  start: {
-    lines: [
-      { text: "Connexion établie.", cls: "system" },
-      { text: "Interface Clara // Protocole Orion", cls: "clara" },
-      {
-        text:
-          "Bonjour, je m'appelle Clara, mais c'est un pseudo. Ici, on ne donne pas de vrais noms.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Tu es ici dans un groupe de résistants. Tu n'es pas encore accrédité.",
-        cls: "clara"
-      },
-      {
-        text:
-          "On t'approche malgré les protocoles. Tes caractéristiques intéressent le projet.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Je vais t'expliquer le Protocole Orion, sans noms ni indices compromettants.",
-        cls: "clara"
-      }
-    ],
-    question: "Acceptes-tu ? (oui/non)",
-    yes: "briefing",
-    no: "disconnect"
+const introLines = [
+  { text: "Connexion établie.", cls: "system" },
+  { text: "Interface Clara // Protocole Orion", cls: "clara" },
+  {
+    text: "Bonjour. Je m'appelle Clara, mais c'est un pseudo.",
+    cls: "clara"
   },
-  disconnect: {
-    lines: [
-      {
-        text: "Très bien. Déconnexion sécurisée. À bientôt.",
-        cls: "system"
-      }
-    ],
-    question: null,
-    action: "blackout"
+  {
+    text: "Tu entres dans une fiction opérationnelle. Ici, chaque mot a un coût.",
+    cls: "clara"
   },
-  briefing: {
-    lines: [
-      {
-        text:
-          "Très bien. Tu es acteur, pas spectateur.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Deux systèmes rivaux te veulent. Aucun ne te protège.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Réponds simplement oui ou non. Chaque réponse trace ta route.",
-        cls: "clara"
-      }
-    ],
-    question: "Es-tu prêt à entendre la première transmission ? (oui/non)",
-    yes: "orion",
-    no: "disconnect"
+  {
+    text: "Orion modélise les décisions humaines et les rend prévisibles.",
+    cls: "clara glitch"
   },
-  orion: {
-    glitch: true,
-    lines: [
-      {
-        text:
-          "Dossier Orion ouvert. Niveau d'alerte: 3. Surveillance active.",
-        cls: "system"
-      },
-      {
-        text:
-          "Une vidéo brute. Une salle verrouillée. Un mot lâché comme une lame.",
-        cls: "clara"
-      },
-      {
-        text:
-          "« Tu es un homme sans poitrine. » Une gifle. Silence.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Orion se présente comme une protection. En réalité, il cartographie les esprits.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Ce n'est pas une arme classique: c'est un protocole qui fabrique le réel.",
-        cls: "clara"
-      }
-    ],
-    question: "Veux-tu comprendre ce signal ? (oui/non)",
-    yes: "analysis",
-    no: "disconnect"
-  },
-  analysis: {
-    glitch: true,
-    lines: [
-      {
-        text:
-          "Le signal vient d'un vieux texte: des hommes qui savent tout, mais ne sentent plus rien.",
-        cls: "clara glitch"
-      },
-      {
-        text:
-          "Ici, l'insulte accuse une trahison. Pas d'éthique, seulement la machine.",
-        cls: "clara"
-      }
-    ],
-    question: "Dois-je t'ouvrir le forum crypté ? (oui/non)",
-    yes: "doctrine",
-    no: "disconnect"
-  },
-  doctrine: {
-    glitch: true,
-    lines: [
-      {
-        text:
-          "Orion ne collecte pas seulement des données. Il modélise des décisions, puis les rend inévitables.",
-        cls: "clara"
-      },
-      {
-        text:
-          "On appelle cela la souveraineté cognitive. En vérité, c'est un modèle d'obéissance.",
-        cls: "clara"
-      }
-    ],
-    question: "Continuer ? (oui/non)",
-    yes: "counterforce",
-    no: "disconnect"
-  },
-  counterforce: {
-    lines: [
-      {
-        text:
-          "Un consortium miroir a juré de l'arrêter. Même technologie, autre doctrine.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Tu dois comprendre ceci: aucun camp n'est pur. Tu choisis un angle, pas un salut.",
-        cls: "clara"
-      }
-    ],
-    question: "Veux-tu aller plus loin ? (oui/non)",
-    yes: "validation",
-    no: "disconnect"
-  },
-  validation: {
-    lines: [
-      {
-        text:
-          "Avant l'accès, une validation minimale: tout ce que tu vois peut te compromettre.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Tu confirmes que tu assumes ce risque.",
-        cls: "clara"
-      }
-    ],
-    question: "Confirmation ? (oui/non)",
-    yes: "forum",
-    no: "disconnect"
-  },
-  forum: {
-    lines: [
-      {
-        text:
-          "Connexion au forum. Règles strictes. Silence obligatoire.",
-        cls: "system"
-      },
-      {
-        text:
-          "Orion t'a déjà repéré. Un consortium miroir observe en retour.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Même technologie. Deux récits qui prétendent te libérer.",
-        cls: "clara"
-      }
-    ],
-    question: "Acceptes-tu la mission: témoigner malgré tout ? (oui/non)",
-    yes: "testimony",
-    no: "disconnect"
-  },
-  testimony: {
-    lines: [
-      {
-        text:
-          "Décision enregistrée. Tu n'es plus un lecteur, tu deviens un témoin.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Dernier rappel: la liberté commence quand on voit l'illusion du choix.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Fin de transmission. Dossier Orion prêt pour ta prochaine session.",
-        cls: "system"
-      }
-    ],
-    question: "Basculer en canal direct avec Clara ? (oui/non)",
-    yes: "ai_intro",
-    no: "disconnect"
-  },
-  ai_intro: {
-    lines: [
-      {
-        text:
-          "Bonjour. Je m'appelle Clara, mais c'est un pseudo.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Notre organisation s'intéresse à ton profil. Tu n'es pas accrédité, mais tu as été retenu.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Nous protégeons notre structure: pas de noms, pas de lieux, pas de preuves exploitables.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Je répondrai à tes questions sans compromettre l'organisation.",
-        cls: "clara"
-      }
-    ],
-    question: null,
-    action: "ai_mode"
+  {
+    text: "Je suis ton interlocutrice dans cet univers virtuel. Pose ta question.",
+    cls: "clara"
   }
-};
+];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -314,36 +96,6 @@ function hideInput() {
   userInput.blur();
 }
 
-async function askQuestion(text) {
-  await typeLine(text, "question");
-  state.awaitingQuestion = true;
-  state.invalidCount = 0;
-  showInput();
-}
-
-async function goToNode(nodeKey) {
-  const node = nodes[nodeKey];
-  state.currentNode = nodeKey;
-  hideInput();
-  if (node.glitch) {
-    glitchPulse();
-  }
-  await printLines(node.lines || []);
-  if (node.action === "blackout") {
-    document.body.classList.add("blackout");
-    return;
-  }
-  if (node.action === "ai_mode") {
-    state.mode = "ai";
-    state.awaitingQuestion = false;
-    showInput();
-    return;
-  }
-  if (node.question) {
-    await askQuestion(node.question);
-  }
-}
-
 async function sendToClara(userText) {
   chatHistory.push({ role: "user", content: userText });
   const placeholder = document.createElement("p");
@@ -362,10 +114,14 @@ async function sendToClara(userText) {
       signal: controller.signal
     });
     clearTimeout(timeoutId);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       placeholder.remove();
+      const detail = data && data.detail ? String(data.detail) : "";
       await typeLine(`Erreur API (${res.status}).`, "warning");
+      if (detail) {
+        await typeLine(`Détail: ${detail}`, "system");
+      }
       return;
     }
     if (data && data.disconnect) {
@@ -375,7 +131,7 @@ async function sendToClara(userText) {
       hideInput();
       return;
     }
-    const reply = (data && data.text) ? data.text.trim() : "";
+    const reply = data && data.text ? data.text.trim() : "";
     placeholder.remove();
     if (!reply) {
       await typeLine("Réponse indisponible. Réessaie.", "warning");
@@ -387,7 +143,7 @@ async function sendToClara(userText) {
     try {
       const fallbackUrl = `${API_URL}?text=${encodeURIComponent(userText)}`;
       const res = await fetch(fallbackUrl, { method: "GET" });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       placeholder.remove();
       if (data && data.disconnect) {
         await typeLine("Très bien. Déconnexion sécurisée. À bientôt.", "system");
@@ -395,14 +151,15 @@ async function sendToClara(userText) {
         hideInput();
         return;
       }
-      const reply = (data && data.text) ? data.text.trim() : "";
+      const reply = data && data.text ? data.text.trim() : "";
       if (!reply) {
         await typeLine("Réponse indisponible. Réessaie.", "warning");
         return;
       }
+      chatHistory.push({ role: "assistant", content: reply });
       await typeLine(reply, "clara");
       return;
-    } catch (fallbackErr) {
+    } catch (_fallbackErr) {
       placeholder.remove();
       const msg = err && err.name === "AbortError"
         ? "Canal instable. Délai dépassé."
@@ -421,6 +178,14 @@ async function startLogin() {
   showInput();
 }
 
+async function startImmersion() {
+  hideInput();
+  glitchPulse();
+  await printLines(introLines);
+  state.mode = "ai";
+  showInput();
+}
+
 async function handleLoginInput(value) {
   if (state.step === "login_id") {
     state.step = "login_pwd";
@@ -433,66 +198,34 @@ async function handleLoginInput(value) {
   }
 
   if (state.step === "login_pwd") {
-    state.step = "story";
+    state.step = "authenticated";
     await typeLine("Authentification terminée.", "system");
     userInput.type = "text";
     userInput.value = "";
-    await goToNode("ai_intro");
+    await startImmersion();
   }
-}
-
-async function handleQuestionInput(raw) {
-  const value = raw.trim().toLowerCase();
-  if (value === "oui" || value === "non") {
-    state.awaitingQuestion = false;
-    userInput.value = "";
-    const node = nodes[state.currentNode];
-    const next = value === "oui" ? node.yes : node.no;
-    await goToNode(next);
-    return;
-  }
-
-  state.invalidCount += 1;
-  if (state.invalidCount === 1) {
-    await typeLine("Réponse invalide. Merci d'écrire 'oui' ou 'non'.", "warning");
-    userInput.value = "";
-    showInput();
-    return;
-  }
-
-  await typeLine("PROTOCOL ORION CORRUPTED // DECONNEXION NECESSAIRE", "warning");
-  hideInput();
-  state.awaitingQuestion = false;
 }
 
 userInput.addEventListener("keydown", async (event) => {
-  if (event.key !== "Enter") return;
+  if (event.key !== "Enter" || state.busy) return;
   const value = userInput.value.trim();
   if (!value) return;
 
-  if (state.mode === "ai") {
-    if (value.toLowerCase() === "/test") {
+  state.busy = true;
+  try {
+    if (state.mode === "ai") {
       userInput.value = "";
-      await typeLine("> /test", "system");
-      await typeLine("Test API en cours...", "system");
-      await sendToClara("Ping Clara");
+      await typeLine(`> ${value}`, "system");
+      await sendToClara(value);
       showInput();
       return;
     }
-    userInput.value = "";
-    await typeLine(`> ${value}`, "system");
-    await sendToClara(value);
-    showInput();
-    return;
-  }
 
-  if (state.step === "login_id" || state.step === "login_pwd") {
-    await handleLoginInput(value);
-    return;
-  }
-
-  if (state.awaitingQuestion) {
-    await handleQuestionInput(value);
+    if (state.step === "login_id" || state.step === "login_pwd") {
+      await handleLoginInput(value);
+    }
+  } finally {
+    state.busy = false;
   }
 });
 
