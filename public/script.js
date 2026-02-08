@@ -9,12 +9,14 @@ const chatHistory = [];
 const state = {
   step: "login_id",
   mode: "login",
-  busy: false
+  busy: false,
+  phase: "recrutement"
 };
 
 const introLines = [
   { text: "Connexion établie.", cls: "system" },
   { text: "Interface Clara // Protocole Orion", cls: "clara" },
+  { text: "Statut narratif: PHASE 1 // RECRUTEMENT", cls: "system" },
   {
     text: "Bonjour. Je m'appelle Clara, mais c'est un pseudo.",
     cls: "clara"
@@ -24,23 +26,27 @@ const introLines = [
     cls: "clara"
   },
   {
-    text: "Notre organisation lutte contre Orion. Orion n’est pas un programme de sécurité. C’est un protocole mondial d’aliénation cognitive.",
+    text: "Notre organisation lutte contre Orion. Orion n'est pas un programme de sécurité. C'est un protocole mondial d'aliénation cognitive.",
     cls: "clara glitch"
   },
   {
-    text: "Ils mesurent les comportements, orientent les choix, puis imposent des décisions présentées comme « naturelles ».",
+    text: "Ils mesurent les comportements, orientent les choix, puis imposent des décisions présentées comme naturelles.",
     cls: "clara"
   },
   {
-    text: "Une autre organisation concurrente, Menshen, prétend s’y opposer, mais c’est une autre architecture de contrôle.",
+    text: "Menshen prétend s'y opposer, mais c'est une autre architecture de contrôle.",
     cls: "clara"
   },
   {
-    text: "Nous cherchons des témoins capables d’observer, de documenter et de transmettre des preuves de ce complot mondial.",
+    text: "Nous recrutons des témoins capables d'observer, de documenter et de transmettre des preuves.",
     cls: "clara"
   },
   {
-    text: "Ici, nous t’approchons. Souhaites-tu en savoir plus ?",
+    text: "Canal officiel: bibliothecaire@protocoleorion2032.org",
+    cls: "system"
+  },
+  {
+    text: "Je vais t'évaluer. Souhaites-tu en savoir plus ?",
     cls: "clara"
   }
 ];
@@ -110,12 +116,24 @@ function hideInput() {
   userInput.blur();
 }
 
+async function onAssistantReply(reply) {
+  const lower = reply.toLowerCase();
+
+  if (state.phase === "recrutement" && (lower.includes("acceptes") || lower.includes("participer") || lower.includes("rejoins"))) {
+    state.phase = "evaluation";
+    await typeLine("Statut narratif: PHASE 2 // EVALUATION", "system");
+  } else if (state.phase === "evaluation" && (lower.includes("premiere mission") || lower.includes("première mission") || lower.includes("transmets"))) {
+    state.phase = "mission";
+    await typeLine("Statut narratif: PHASE 3 // PREMIERE MISSION", "system");
+  }
+}
+
 async function sendToClara(userText) {
   chatHistory.push({ role: "user", content: userText });
 
   const placeholder = document.createElement("p");
   placeholder.className = "line system";
-  placeholder.textContent = "…";
+  placeholder.textContent = "...";
   output.appendChild(placeholder);
   output.scrollTop = output.scrollHeight;
 
@@ -138,14 +156,14 @@ async function sendToClara(userText) {
       const detail = data && data.detail ? String(data.detail) : "";
       await typeLine(`Erreur API (${res.status}).`, "warning");
       if (detail) {
-        await typeLine(`Détail: ${detail}`, "system");
+        await typeLine(`Detail: ${detail}`, "system");
       }
       return;
     }
 
     if (data && data.disconnect) {
       placeholder.remove();
-      await typeLine("Très bien. Déconnexion sécurisée. À bientôt.", "system");
+      await typeLine("Tres bien. Deconnexion securisee. A bientot.", "system");
       document.body.classList.add("blackout");
       hideInput();
       return;
@@ -155,51 +173,28 @@ async function sendToClara(userText) {
     placeholder.remove();
 
     if (!reply) {
-      await typeLine("Réponse indisponible. Réessaie.", "warning");
+      await typeLine("Reponse indisponible. Reessaie.", "warning");
       return;
     }
 
     chatHistory.push({ role: "assistant", content: reply });
     await typeLine(reply, "clara");
+    await onAssistantReply(reply);
   } catch (err) {
-    try {
-      const fallbackUrl = `${API_URL}?text=${encodeURIComponent(userText)}`;
-      const res = await fetch(fallbackUrl, { method: "GET" });
-      const data = await res.json().catch(() => ({}));
-
-      placeholder.remove();
-
-      if (data && data.disconnect) {
-        await typeLine("Très bien. Déconnexion sécurisée. À bientôt.", "system");
-        document.body.classList.add("blackout");
-        hideInput();
-        return;
-      }
-
-      const reply = data && data.text ? data.text.trim() : "";
-      if (!reply) {
-        await typeLine("Réponse indisponible. Réessaie.", "warning");
-        return;
-      }
-
-      chatHistory.push({ role: "assistant", content: reply });
-      await typeLine(reply, "clara");
-    } catch (_fallbackErr) {
-      placeholder.remove();
-      const msg = err && err.name === "AbortError"
-        ? "Canal instable. Délai dépassé."
-        : "Canal instable. Reconnexion nécessaire.";
-      await typeLine(msg, "warning");
-      if (err && err.message) {
-        await typeLine(`Détail: ${err.message}`, "system");
-      }
+    placeholder.remove();
+    const msg = err && err.name === "AbortError"
+      ? "Canal instable. Delai depasse."
+      : "Canal instable. Reconnexion necessaire.";
+    await typeLine(msg, "warning");
+    if (err && err.message) {
+      await typeLine(`Detail: ${err.message}`, "system");
     }
   }
 }
 
 async function startLogin() {
   await typeLine("PROTOCOLE ORION // TERMINAL", "system");
-  await typeLine("Tu es invité, entre un identifiant et le mot de passe de ton choix.", "system");
+  await typeLine("Tu es invite, entre un identifiant et le mot de passe de ton choix.", "system");
   await typeLine("Identifiant:", "system");
   showInput();
 }
@@ -223,7 +218,7 @@ async function startImmersion() {
 async function handleLoginInput(value) {
   if (state.step === "login_id") {
     state.step = "login_pwd";
-    await typeLine(`Identifiant enregistré: ${value}`, "system");
+    await typeLine(`Identifiant enregistre: ${value}`, "system");
     await typeLine("Mot de passe:", "system");
     userInput.value = "";
     userInput.type = "password";
@@ -233,7 +228,7 @@ async function handleLoginInput(value) {
 
   if (state.step === "login_pwd") {
     state.step = "authenticated";
-    await typeLine("Authentification terminée.", "system");
+    await typeLine("Authentification terminee.", "system");
     userInput.type = "text";
     userInput.value = "";
     await startImmersion();
