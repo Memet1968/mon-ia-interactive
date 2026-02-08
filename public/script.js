@@ -54,23 +54,6 @@ const nodes = {
     question: null,
     action: "blackout"
   },
-  refuse: {
-    lines: [
-      {
-        text:
-          "Refus enregistré. Orion n'aime pas les refus, mais je respecte les hésitations.",
-        cls: "clara"
-      },
-      {
-        text:
-          "Je peux tout de même vous montrer un indice sans vous compromettre.",
-        cls: "clara"
-      }
-    ],
-    question: "Souhaitez-vous voir un extrait de la conférence ? (oui/non)",
-    yes: "video",
-    no: "disconnect"
-  },
   briefing: {
     lines: [
       {
@@ -126,21 +109,22 @@ const nodes = {
     yes: "analysis",
     no: "disconnect"
   },
-  video: {
+  analysis: {
+    glitch: true,
     lines: [
       {
         text:
-          "Extrait: un observateur à distance. Le mot Orion circule comme un souffle froid.",
-        cls: "clara"
+          "Le signal vient d'un vieux texte: des hommes qui savent tout, mais ne sentent plus rien.",
+        cls: "clara glitch"
       },
       {
         text:
-          "Tu comprends que la gifle est un message codé. La question est: de qui à qui ?",
+          "Ici, l'insulte accuse une trahison. Pas d'éthique, seulement la machine.",
         cls: "clara"
       }
     ],
-    question: "Veux-tu entrer dans le forum des archivistes ? (oui/non)",
-    yes: "forum",
+    question: "Dois-je t'ouvrir le forum crypté ? (oui/non)",
+    yes: "doctrine",
     no: "disconnect"
   },
   doctrine: {
@@ -193,24 +177,6 @@ const nodes = {
     ],
     question: "Confirmation ? (oui/non)",
     yes: "forum",
-    no: "disconnect"
-  },
-  analysis: {
-    glitch: true,
-    lines: [
-      {
-        text:
-          "Le signal vient d'un vieux texte: des hommes qui savent tout, mais ne sentent plus rien.",
-        cls: "clara glitch"
-      },
-      {
-        text:
-          "Ici, l'insulte accuse une trahison. Pas d'éthique, seulement la machine.",
-        cls: "clara"
-      }
-    ],
-    question: "Dois-je t'ouvrir le forum crypté ? (oui/non)",
-    yes: "doctrine",
     no: "disconnect"
   },
   forum: {
@@ -282,26 +248,6 @@ const nodes = {
     ],
     question: null,
     action: "ai_mode"
-  },
-  restart: {
-    lines: [
-      {
-        text: "Réinitialisation en cours...", cls: "system"
-      }
-    ],
-    question: "Revenir au début ? (oui/non)",
-    yes: "start",
-    no: "disconnect"
-  },
-  exit: {
-    lines: [
-      {
-        text:
-          "Transmission suspendue. Vous pourrez revenir quand le protocole s'ouvrira à nouveau.",
-        cls: "system"
-      }
-    ],
-    question: null
   }
 };
 
