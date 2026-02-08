@@ -6,14 +6,17 @@ import cors from "cors";
 const app = express();
 
 const promptPath = path.join(process.cwd(), "clara_prompt.txt");
+const lorePath = path.join(process.cwd(), "orion_lore.txt");
+
 const claraPrompt = fs.readFileSync(promptPath, "utf8");
+const orionLore = fs.existsSync(lorePath) ? fs.readFileSync(lorePath, "utf8") : "";
 
 const hfKey = process.env.HUGGINGFACE_API_KEY || process.env.HF_API_KEY || "";
 const hfModel = process.env.HF_MODEL || "Qwen/Qwen2.5-7B-Instruct";
 const HF_CHAT_URL = "https://router.huggingface.co/v1/chat/completions";
 
 app.use(cors());
-app.use(express.json({ limit: "64kb" }));
+app.use(express.json({ limit: "128kb" }));
 app.use(express.static("public"));
 
 function normalizeMessages(messages) {
@@ -25,6 +28,86 @@ function normalizeMessages(messages) {
     }))
     .filter((m) => m.content.length > 0)
     .slice(-20);
+}
+
+function splitLoreSections(raw) {
+  if (!raw.trim()) return [];
+  const lines = raw.split("\n");
+  const sections = [];
+  let current = null;
+
+  for (const line of lines) {
+    if (line.startsWith("## ")) {
+      if (current) sections.push(current);
+      current = { title: line.replace("## ", "").trim(), body: "" };
+    } else if (current) {
+      current.body += `${line}\n`;
+    }
+  }
+  if (current) sections.push(current);
+
+  return sections
+    .map((s) => ({ ...s, body: s.body.trim() }))
+    .filter((s) => s.body.length > 0);
+}
+
+function keywordsFromText(text) {
+  return new Set(
+    String(text || "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 3)
+  );
+}
+
+function selectLoreContext(messages, maxSections = 4) {
+  const sections = splitLoreSections(orionLore);
+  if (!sections.length) return "";
+
+  const userText = messages
+    .filter((m) => m.role === "user")
+    .map((m) => m.content)
+    .join(" ");
+
+  const query = keywordsFromText(userText);
+
+  if (!query.size) {
+    return sections.slice(0, maxSections).map((s) => `## ${s.title}\n${s.body}`).join("\n\n");
+  }
+
+  const ranked = sections
+    .map((s) => {
+      const sectionWords = keywordsFromText(`${s.title} ${s.body}`);
+      let score = 0;
+      for (const q of query) {
+        if (sectionWords.has(q)) score += 1;
+      }
+      return { section: s, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const picked = ranked
+    .filter((r) => r.score > 0)
+    .slice(0, maxSections)
+    .map((r) => r.section);
+
+  const fallback = sections.slice(0, 2);
+  const finalSections = picked.length ? picked : fallback;
+
+  return finalSections.map((s) => `## ${s.title}\n${s.body}`).join("\n\n");
+}
+
+function buildSystemInstruction(messages) {
+  const loreContext = selectLoreContext(messages);
+  if (!loreContext) return claraPrompt.trim();
+
+  return [
+    claraPrompt.trim(),
+    "",
+    "Contexte Orion a respecter (source interne):",
+    loreContext
+  ].join("\n");
 }
 
 async function generateWithHF(messages) {
@@ -44,6 +127,8 @@ async function generateWithHF(messages) {
     };
   }
 
+  const systemInstruction = buildSystemInstruction(messages);
+
   const response = await fetch(HF_CHAT_URL, {
     method: "POST",
     headers: {
@@ -52,7 +137,7 @@ async function generateWithHF(messages) {
     },
     body: JSON.stringify({
       model: hfModel,
-      messages: [{ role: "system", content: claraPrompt }, ...messages],
+      messages: [{ role: "system", content: systemInstruction }, ...messages],
       temperature: 0.45,
       max_tokens: 500
     })
@@ -76,7 +161,8 @@ app.get("/health", (_req, res) => {
     ok: true,
     provider: "huggingface",
     model: hfModel,
-    hasHfKey: Boolean(hfKey)
+    hasHfKey: Boolean(hfKey),
+    hasLore: Boolean(orionLore.trim())
   });
 });
 
@@ -134,5 +220,5 @@ app.get("*", (_req, res) => {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`Clara API (Hugging Face) listening on ${port}`);
+  console.log(`Clara API (Hugging Face + Orion Lore) listening on ${port}`);
 });
