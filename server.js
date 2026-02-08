@@ -3,7 +3,7 @@ import path from "path";
 import express from "express";
 import cors from "cors";
 
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const app = express();
@@ -26,6 +26,22 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+app.get("/api/models", async (_req, res) => {
+  try {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
+      method: "GET",
+      headers: { "x-goog-api-key": geminiKey }
+    });
+    const data = await response.json();
+    const models = (data.models || [])
+      .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
+      .map((m) => m.name);
+    res.json({ models });
+  } catch (err) {
+    res.status(500).json({ error: "MODEL_LIST_FAILURE", detail: err?.message || String(err) });
+  }
+});
+
 app.get("/api/clara", async (req, res) => {
   const text = typeof req.query?.text === "string" ? req.query.text : "";
   if (!text) {
@@ -46,10 +62,13 @@ app.get("/api/clara", async (req, res) => {
       body: JSON.stringify(payload)
     });
     const data = await response.json();
+    if (data?.error) {
+      res.status(500).json({ error: "CLARA_FAILURE", detail: data.error.message || data.error });
+      return;
+    }
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     const shouldDisconnect = reply.includes("[DISCONNECT]");
     if (shouldDisconnect) return res.json({ text: "", disconnect: true });
-    if (!reply) return res.json({ text: "", disconnect: false, debug: data });
     res.json({ text: reply, disconnect: false });
   } catch (err) {
     res.status(500).json({ error: "CLARA_FAILURE", detail: err?.message || String(err) });
@@ -76,10 +95,13 @@ app.post("/api/clara", async (req, res) => {
       body: JSON.stringify(payload)
     });
     const data = await response.json();
+    if (data?.error) {
+      res.status(500).json({ error: "CLARA_FAILURE", detail: data.error.message || data.error });
+      return;
+    }
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     const shouldDisconnect = text.includes("[DISCONNECT]");
     if (shouldDisconnect) return res.json({ text: "", disconnect: true });
-    if (!text) return res.json({ text: "", disconnect: false, debug: data });
     res.json({ text, disconnect: false });
   } catch (err) {
     res.status(500).json({ error: "CLARA_FAILURE", detail: err?.message || String(err) });
