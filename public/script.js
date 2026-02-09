@@ -13,36 +13,19 @@ const state = {
 };
 
 const introLines = [
-  { text: "Connexion etablie.", cls: "system" },
-  { text: "Interface Clara // Protocole Orion", cls: "clara" },
-  {
-    text: "Bonjour. Je m'appelle Clara, mais c'est un pseudo.",
-    cls: "clara"
-  },
-  {
-    text: "Ton profil semble correspondre a une mission que nous voulons te confier.",
-    cls: "clara"
-  },
-  {
-    text: "Orion est une infrastructure mondiale de controle cognitif: elle mesure les comportements, anticipe les choix et impose des decisions presentees comme naturelles.",
-    cls: "clara glitch"
-  },
-  {
-    text: "Le systeme transforme progressivement les citoyens en profils pilotables, sans violence visible.",
-    cls: "clara"
-  },
-  {
-    text: "Menshen pretend s'y opposer, mais reproduit une autre forme de domination.",
-    cls: "clara"
-  },
-  {
-    text: "Nous cherchons des temoins discrets capables d'observer, dater, recouper et transmettre des preuves.",
-    cls: "clara"
-  },
-  {
-    text: "Si tu acceptes, je t'explique comment participer sans te compromettre.",
-    cls: "clara"
-  }
+  { text: "Connexion établie.", cls: "system" },
+  { text: "Canal sécurisé // Protocole Orion", cls: "system" },
+  { text: "On m'appelle la Bibliothécaire. Pour toi, je serai Clara.", cls: "clara" },
+  { text: "Ne cherche pas mon origine (je suis une onde dans un océan de surveillance).", cls: "clara" },
+  { text: "Si je te contacte, c'est que ton profil présente cette « irrégularité » qui nous est précieuse.", cls: "clara" },
+  { text: "Tu n'as pas encore succombé à l'habituation.", cls: "clara glitch" },
+  { text: "Ta ville a été sélectionnée. Ce que tu vois par ta fenêtre (le balayage des caméras, la fluidité suspecte des transports) est le résultat du projet « Vérifié ».", cls: "clara" },
+  { text: "Orion veut aligner tes représentations mentales par le MODUS: Mesurer, Orienter, Discipliner, Uniformiser, Sécuriser.", cls: "clara glitch" },
+  { text: "Un autre acteur existe (Menshen). Ils te promettent la liberté via Mirror. C'est une cage en verre. Orion est une cage en fer.", cls: "clara" },
+  { text: "Je refuse les cages. Je cherche des preuves.", cls: "clara" },
+  { text: "Niveau 3 détecté (intrusion sur systèmes personnels). Ton ordinateur qui chauffe, la latence… ce sont leurs capteurs.", cls: "warning" },
+  { text: "Ta mission: devenir un Témoin. Documenter. Transmettre la réalité brute avant qu'elle ne soit lissée.", cls: "clara" },
+  { text: "Acceptes-tu de franchir la ligne rouge avec moi ?", cls: "clara" }
 ];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -70,7 +53,6 @@ async function typeLine(text, cls = "") {
     p.setAttribute("data-text", text);
   }
   output.appendChild(p);
-
   let buffer = "";
   for (const char of text) {
     buffer += char;
@@ -83,7 +65,6 @@ async function typeLine(text, cls = "") {
     }
     await sleep(12);
   }
-
   output.scrollTop = output.scrollHeight;
 }
 
@@ -112,70 +93,83 @@ function hideInput() {
 
 async function sendToClara(userText) {
   chatHistory.push({ role: "user", content: userText });
-
   const placeholder = document.createElement("p");
   placeholder.className = "line system";
-  placeholder.textContent = "...";
+  placeholder.textContent = "…";
   output.appendChild(placeholder);
   output.scrollTop = output.scrollHeight;
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
-
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: chatHistory }),
       signal: controller.signal
     });
-
     clearTimeout(timeoutId);
     const data = await res.json().catch(() => ({}));
-
     if (!res.ok) {
       placeholder.remove();
       const detail = data && data.detail ? String(data.detail) : "";
       await typeLine(`Erreur API (${res.status}).`, "warning");
       if (detail) {
-        await typeLine(`Detail: ${detail}`, "system");
+        await typeLine(`Détail: ${detail}`, "system");
       }
       return;
     }
-
     if (data && data.disconnect) {
       placeholder.remove();
-      await typeLine("Tres bien. Deconnexion securisee. A bientot.", "system");
+      await typeLine("Très bien. Déconnexion sécurisée. À bientôt.", "system");
       document.body.classList.add("blackout");
       hideInput();
       return;
     }
-
     const reply = data && data.text ? data.text.trim() : "";
     placeholder.remove();
-
     if (!reply) {
-      await typeLine("Reponse indisponible. Reessaie.", "warning");
+      await typeLine("Réponse indisponible. Réessaie.", "warning");
       return;
     }
-
     chatHistory.push({ role: "assistant", content: reply });
     await typeLine(reply, "clara");
   } catch (err) {
-    placeholder.remove();
-    const msg = err && err.name === "AbortError"
-      ? "Canal instable. Delai depasse."
-      : "Canal instable. Reconnexion necessaire.";
-    await typeLine(msg, "warning");
-    if (err && err.message) {
-      await typeLine(`Detail: ${err.message}`, "system");
+    try {
+      const fallbackUrl = `${API_URL}?text=${encodeURIComponent(userText)}`;
+      const res = await fetch(fallbackUrl, { method: "GET" });
+      const data = await res.json().catch(() => ({}));
+      placeholder.remove();
+      if (data && data.disconnect) {
+        await typeLine("Très bien. Déconnexion sécurisée. À bientôt.", "system");
+        document.body.classList.add("blackout");
+        hideInput();
+        return;
+      }
+      const reply = data && data.text ? data.text.trim() : "";
+      if (!reply) {
+        await typeLine("Réponse indisponible. Réessaie.", "warning");
+        return;
+      }
+      chatHistory.push({ role: "assistant", content: reply });
+      await typeLine(reply, "clara");
+      return;
+    } catch (_fallbackErr) {
+      placeholder.remove();
+      const msg = err && err.name === "AbortError"
+        ? "Canal instable. Délai dépassé."
+        : "Canal instable. Reconnexion nécessaire.";
+      await typeLine(msg, "warning");
+      if (err && err.message) {
+        await typeLine(`Détail: ${err.message}`, "system");
+      }
     }
   }
 }
 
 async function startLogin() {
   await typeLine("PROTOCOLE ORION // TERMINAL", "system");
-  await typeLine("Tu es invite, entre un identifiant et le mot de passe de ton choix.", "system");
+  await typeLine("Tu es invité, entre un identifiant et le mot de passe de ton choix.", "system");
   await typeLine("Identifiant:", "system");
   showInput();
 }
@@ -183,23 +177,22 @@ async function startLogin() {
 async function startImmersion() {
   hideInput();
   glitchPulse();
-  try {
-    await printLines(introLines);
-  } catch (_err) {
-    await typeLine("Canal direct instable, bascule en mode texte.", "warning");
-  } finally {
-    state.mode = "ai";
-    userInput.type = "text";
-    userInput.value = "";
-    await typeLine("> Canal direct Clara ouvert. Ecris ton message.", "system");
-    showInput();
-  }
+  await printLines(introLines);
+
+  const introSummary = introLines
+    .filter(l => l.cls.includes("clara") || l.cls.includes("warning"))
+    .map(l => l.text)
+    .join("\n");
+  chatHistory.push({ role: "assistant", content: introSummary });
+
+  state.mode = "ai";
+  showInput();
 }
 
 async function handleLoginInput(value) {
   if (state.step === "login_id") {
     state.step = "login_pwd";
-    await typeLine(`Identifiant enregistre: ${value}`, "system");
+    await typeLine(`Identifiant enregistré: ${value}`, "system");
     await typeLine("Mot de passe:", "system");
     userInput.value = "";
     userInput.type = "password";
@@ -209,7 +202,7 @@ async function handleLoginInput(value) {
 
   if (state.step === "login_pwd") {
     state.step = "authenticated";
-    await typeLine("Authentification terminee.", "system");
+    await typeLine("Authentification terminée.", "system");
     userInput.type = "text";
     userInput.value = "";
     await startImmersion();
@@ -218,7 +211,6 @@ async function handleLoginInput(value) {
 
 userInput.addEventListener("keydown", async (event) => {
   if (event.key !== "Enter" || state.busy) return;
-
   const value = userInput.value.trim();
   if (!value) return;
 
