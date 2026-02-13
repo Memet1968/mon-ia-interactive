@@ -23,7 +23,13 @@ const DEFAULT_MODEL = Buffer.from("ZGVlcHNlZWstY2hhdA==", "base64").toString("ut
 const MODEL_NAME = process.env.LLM_MODEL || DEFAULT_MODEL;
 const PROVIDER_API_URL = process.env.LLM_API_URL || DEFAULT_API_URL;
 const REQUEST_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 60_000);
+const FREQUENCY_PENALTY_RAW = process.env.LLM_FREQUENCY_PENALTY;
 const providerApiKey = process.env.LLM_API_KEY || "";
+const isGeminiEndpoint = /generativelanguage\.googleapis\.com/i.test(PROVIDER_API_URL);
+
+const frequencyPenalty = Number(FREQUENCY_PENALTY_RAW);
+const hasFrequencyPenalty =
+  FREQUENCY_PENALTY_RAW !== undefined && Number.isFinite(frequencyPenalty);
 
 function readFirstExistingFile(candidates) {
   for (const candidate of candidates) {
@@ -107,20 +113,24 @@ async function generateWithProvider(userMessages) {
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
+    const payload = {
+      model: MODEL_NAME,
+      messages: [{ role: "system", content: fullSystemPrompt }, ...userMessages],
+      temperature: 0.85,
+      top_p: 0.95,
+      max_tokens: 2000
+    };
+    if (hasFrequencyPenalty && !isGeminiEndpoint) {
+      payload.frequency_penalty = frequencyPenalty;
+    }
+
     const response = await fetch(PROVIDER_API_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${providerApiKey}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        model: MODEL_NAME,
-        messages: [{ role: "system", content: fullSystemPrompt }, ...userMessages],
-        temperature: 0.85,
-        top_p: 0.95,
-        frequency_penalty: 0.3,
-        max_tokens: 2000
-      }),
+      body: JSON.stringify(payload),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
