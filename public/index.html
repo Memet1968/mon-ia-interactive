@@ -1,23 +1,69 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; media-src 'self';" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Protocole Orion — Terminal</title>
-  <link rel="icon" type="image/gif" href="/favicon.gif" />
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SECURE CHANNEL // MATRIX-2XTH-687</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="terminal" id="terminal" aria-live="polite">
-    <div id="output"></div>
-    <div id="inputRow" class="input-row" aria-hidden="true">
-      <span class="prompt">&gt;</span>
-      <input id="userInput" class="terminal-input" type="text" autocomplete="off" spellcheck="false" />
+    <!-- En-tête terminal sécurisé -->
+    <div class="terminal-header">
+        <div class="header-line">
+            <span class="header-icon">███</span>
+            <span class="header-title">SECURE CHANNEL // MATRIX-2XTH-687</span>
+        </div>
+        <div class="header-status">
+            <span class="status-indicator">⚡</span>
+            <span class="status-text">QUANTUM ENCRYPTED // NO LOGS</span>
+        </div>
     </div>
-  </main>
-  <div id="overlay" aria-hidden="true"></div>
 
-  <script src="script.js"></script>
+    <!-- Zone de conversation -->
+    <div id="chat-container" class="chat-container">
+        <!-- Message d'introduction automatique -->
+        <div class="system-message">
+            <div class="system-icon">🔒</div>
+            <div class="system-text">
+                <strong>CONNEXION ÉTABLIE</strong><br>
+                Chiffrement quantique QKD-289 activé<br>
+                Aucun log conservé // Session volatile
+            </div>
+        </div>
+
+        <!-- Les messages de Clara et de l'utilisateur sont injectes ici -->
+    </div>
+
+    <!-- Zone de saisie utilisateur (fixée en bas) -->
+    <div class="input-container">
+        <div class="input-wrapper">
+            <textarea 
+                id="user-input" 
+                class="user-input" 
+                placeholder="Tapez votre message..."
+                rows="2"
+            ></textarea>
+            <button id="send-button" class="send-button">
+                <span class="send-icon">▶</span>
+            </button>
+        </div>
+        <div class="input-hint">
+            <span class="hint-icon">⚠</span>
+            <span class="hint-text">Chiffré E2E // Aucune trace</span>
+        </div>
+    </div>
+
+    <!-- Indicateur de frappe (Clara écrit...) -->
+    <div id="typing-indicator" class="typing-indicator" style="display: none;">
+        <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <span class="typing-text">Clara écrit...</span>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>

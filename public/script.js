@@ -1,235 +1,207 @@
-const output = document.getElementById("output");
-const inputRow = document.getElementById("inputRow");
-const userInput = document.getElementById("userInput");
-const overlay = document.getElementById("overlay");
-
 const API_URL = "/api/clara";
-const chatHistory = [];
+const MAX_MESSAGE_LENGTH = 1000;
+const TYPING_DELAY = 1500;
 
-const state = {
-  step: "login_id",
-  mode: "login",
-  busy: false
-};
+let conversationHistory = [];
+let isWaiting = false;
 
-const introLines = [
-  { text: "Connexion établie.", cls: "system" },
-  { text: "Canal sécurisé // Protocole Orion", cls: "system" },
-  { text: "On m'appelle la Bibliothécaire. Pour toi, je serai Clara.", cls: "clara" },
-  { text: "Ne cherche pas mon origine (je suis une onde dans un océan de surveillance).", cls: "clara" },
-  { text: "Si je te contacte, c'est que ton profil présente cette « irrégularité » qui nous est précieuse.", cls: "clara" },
-  { text: "Tu n'as pas encore succombé à l'habituation.", cls: "clara glitch" },
-  { text: "Ta ville a été sélectionnée. Ce que tu vois par ta fenêtre (le balayage des caméras, la fluidité suspecte des transports) est le résultat du projet « Vérifié ».", cls: "clara" },
-  { text: "Orion veut aligner tes représentations mentales par le MODUS: Mesurer, Orienter, Discipliner, Uniformiser, Sécuriser.", cls: "clara glitch" },
-  { text: "Un autre acteur existe (Menshen). Ils te promettent la liberté via Mirror. C'est une cage en verre. Orion est une cage en fer.", cls: "clara" },
-  { text: "Je refuse les cages. Je cherche des preuves.", cls: "clara" },
-  { text: "Niveau 3 détecté (intrusion sur systèmes personnels). Ton ordinateur qui chauffe, la latence… ce sont leurs capteurs.", cls: "warning" },
-  { text: "Ta mission: devenir un Témoin. Documenter. Transmettre la réalité brute avant qu'elle ne soit lissée.", cls: "clara" },
-  { text: "Acceptes-tu de franchir la ligne rouge avec moi ?", cls: "clara" }
-];
+const chatContainer = document.getElementById("chat-container");
+const userInput = document.getElementById("user-input");
+const sendButton = document.getElementById("send-button");
+const typingIndicator = document.getElementById("typing-indicator");
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function beep(freq = 740, duration = 0.02, gain = 0.035) {
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
-  const osc = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  osc.frequency.value = freq;
-  osc.type = "square";
-  g.gain.value = gain;
-  osc.connect(g);
-  g.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + duration);
-}
-
-async function typeLine(text, cls = "") {
-  const p = document.createElement("p");
-  p.className = `line ${cls}`.trim();
-  if (cls.includes("glitch")) {
-    p.setAttribute("data-text", text);
-  }
-  output.appendChild(p);
-  let buffer = "";
-  for (const char of text) {
-    buffer += char;
-    p.textContent = buffer;
-    if (cls.includes("glitch")) {
-      p.setAttribute("data-text", buffer);
-    }
-    if (char !== " " && Math.random() < 0.25) {
-      beep(640 + Math.random() * 120, 0.018, 0.02);
-    }
-    await sleep(12);
-  }
-  output.scrollTop = output.scrollHeight;
-}
-
-async function printLines(lines) {
-  for (const line of lines) {
-    await typeLine(line.text, line.cls);
-    await sleep(120);
-  }
-}
-
-function glitchPulse() {
-  overlay.classList.add("glitch");
-  setTimeout(() => overlay.classList.remove("glitch"), 700);
-}
-
-function showInput() {
-  inputRow.setAttribute("aria-hidden", "false");
+document.addEventListener("DOMContentLoaded", () => {
   userInput.focus();
-  beep(520, 0.02, 0.03);
+  sendButton.addEventListener("click", handleSendMessage);
+  userInput.addEventListener("keydown", handleKeyDown);
+  userInput.addEventListener("input", handleInputResize);
+  scrollToBottom();
+});
+
+function getCurrentTime() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
-function hideInput() {
-  inputRow.setAttribute("aria-hidden", "true");
-  userInput.blur();
+function scrollToBottom() {
+  chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-async function sendToClara(userText) {
-  chatHistory.push({ role: "user", content: userText });
-  const placeholder = document.createElement("p");
-  placeholder.className = "line system";
-  placeholder.textContent = "…";
-  output.appendChild(placeholder);
-  output.scrollTop = output.scrollHeight;
+function handleInputResize() {
+  userInput.style.height = "auto";
+  userInput.style.height = `${userInput.scrollHeight}px`;
+}
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: chatHistory }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      placeholder.remove();
-      const detail = data && data.detail ? String(data.detail) : "";
-      await typeLine(`Erreur API (${res.status}).`, "warning");
-      if (detail) {
-        await typeLine(`Détail: ${detail}`, "system");
-      }
-      return;
-    }
-    if (data && data.disconnect) {
-      placeholder.remove();
-      await typeLine("Très bien. Déconnexion sécurisée. À bientôt.", "system");
-      document.body.classList.add("blackout");
-      hideInput();
-      return;
-    }
-    const reply = data && data.text ? data.text.trim() : "";
-    placeholder.remove();
-    if (!reply) {
-      await typeLine("Réponse indisponible. Réessaie.", "warning");
-      return;
-    }
-    chatHistory.push({ role: "assistant", content: reply });
-    await typeLine(reply, "clara");
-  } catch (err) {
-    try {
-      const fallbackUrl = `${API_URL}?text=${encodeURIComponent(userText)}`;
-      const res = await fetch(fallbackUrl, { method: "GET" });
-      const data = await res.json().catch(() => ({}));
-      placeholder.remove();
-      if (data && data.disconnect) {
-        await typeLine("Très bien. Déconnexion sécurisée. À bientôt.", "system");
-        document.body.classList.add("blackout");
-        hideInput();
-        return;
-      }
-      const reply = data && data.text ? data.text.trim() : "";
-      if (!reply) {
-        await typeLine("Réponse indisponible. Réessaie.", "warning");
-        return;
-      }
-      chatHistory.push({ role: "assistant", content: reply });
-      await typeLine(reply, "clara");
-      return;
-    } catch (_fallbackErr) {
-      placeholder.remove();
-      const msg = err && err.name === "AbortError"
-        ? "Canal instable. Délai dépassé."
-        : "Canal instable. Reconnexion nécessaire.";
-      await typeLine(msg, "warning");
-      if (err && err.message) {
-        await typeLine(`Détail: ${err.message}`, "system");
-      }
-    }
+function handleKeyDown(event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    handleSendMessage();
   }
 }
 
-async function startLogin() {
-  await typeLine("PROTOCOLE ORION // TERMINAL", "system");
-  await typeLine("Tu es invité, entre un identifiant et le mot de passe de ton choix.", "system");
-  await typeLine("Identifiant:", "system");
-  showInput();
-}
-
-async function startImmersion() {
-  hideInput();
-  glitchPulse();
-  await printLines(introLines);
-
-  const introSummary = introLines
-    .filter(l => l.cls.includes("clara") || l.cls.includes("warning"))
-    .map(l => l.text)
-    .join("\n");
-  chatHistory.push({ role: "assistant", content: introSummary });
-
-  state.mode = "ai";
-  showInput();
-}
-
-async function handleLoginInput(value) {
-  if (state.step === "login_id") {
-    state.step = "login_pwd";
-    await typeLine(`Identifiant enregistré: ${value}`, "system");
-    await typeLine("Mot de passe:", "system");
-    userInput.value = "";
-    userInput.type = "password";
-    showInput();
+async function handleSendMessage() {
+  const text = userInput.value.trim();
+  if (!text || isWaiting) {
+    return;
+  }
+  if (text.length > MAX_MESSAGE_LENGTH) {
+    addSystemMessage(`Message trop long (max ${MAX_MESSAGE_LENGTH} caracteres).`);
     return;
   }
 
-  if (state.step === "login_pwd") {
-    state.step = "authenticated";
-    await typeLine("Authentification terminée.", "system");
-    userInput.type = "text";
-    userInput.value = "";
-    await startImmersion();
-  }
-}
+  isWaiting = true;
+  sendButton.disabled = true;
+  userInput.disabled = true;
 
-userInput.addEventListener("keydown", async (event) => {
-  if (event.key !== "Enter" || state.busy) return;
-  const value = userInput.value.trim();
-  if (!value) return;
+  addUserMessage(text);
+  userInput.value = "";
+  userInput.style.height = "auto";
+  conversationHistory.push({ role: "user", content: text });
 
-  state.busy = true;
+  showTypingIndicator();
+  await sleep(TYPING_DELAY);
+
   try {
-    if (state.mode === "ai") {
-      userInput.value = "";
-      await typeLine(`> ${value}`, "system");
-      await sendToClara(value);
-      showInput();
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: conversationHistory })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.detail || `HTTP ${response.status}`);
+    }
+
+    hideTypingIndicator();
+    if (data.disconnect) {
+      addSystemMessage("Clara a quitte le canal. Connexion interrompue.");
+      disableInput();
       return;
     }
 
-    if (state.step === "login_id" || state.step === "login_pwd") {
-      await handleLoginInput(value);
+    const replyText = String(data.text || "").trim();
+    if (!replyText) {
+      addSystemMessage("Reponse vide recue de l'API.");
+      return;
     }
+
+    addClaraMessage(replyText);
+    conversationHistory.push({ role: "assistant", content: replyText });
+  } catch (error) {
+    hideTypingIndicator();
+    addSystemMessage(`Erreur: ${error.message}`);
+    console.error("API Error:", error);
   } finally {
-    state.busy = false;
+    isWaiting = false;
+    sendButton.disabled = false;
+    userInput.disabled = false;
+    userInput.focus();
   }
+}
+
+function addUserMessage(text) {
+  const messageNode = createMessageNode("user-message", "VOUS", text);
+  chatContainer.appendChild(messageNode);
+  scrollToBottom();
+}
+
+function addClaraMessage(text) {
+  const messageNode = createMessageNode("clara-message", "CLARA", text);
+  chatContainer.appendChild(messageNode);
+  scrollToBottom();
+}
+
+function createMessageNode(messageClass, sender, text) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `message ${messageClass}`;
+
+  const header = document.createElement("div");
+  header.className = "message-header";
+
+  const senderNode = document.createElement("span");
+  senderNode.className = "message-sender";
+  senderNode.textContent = sender;
+
+  const timeNode = document.createElement("span");
+  timeNode.className = "message-time";
+  timeNode.textContent = getCurrentTime();
+
+  header.appendChild(senderNode);
+  header.appendChild(timeNode);
+
+  const content = document.createElement("div");
+  content.className = "message-content";
+  appendParagraphs(content, text);
+
+  wrapper.appendChild(header);
+  wrapper.appendChild(content);
+  return wrapper;
+}
+
+function appendParagraphs(container, text) {
+  const normalized = String(text || "").replace(/\r\n/g, "\n");
+  const blocks = normalized.split("\n\n");
+  for (const block of blocks) {
+    const paragraph = document.createElement("p");
+    const lines = block.split("\n");
+    lines.forEach((line, index) => {
+      if (index > 0) {
+        paragraph.appendChild(document.createElement("br"));
+      }
+      paragraph.appendChild(document.createTextNode(line));
+    });
+    container.appendChild(paragraph);
+  }
+}
+
+function addSystemMessage(text) {
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "system-message";
+
+  const icon = document.createElement("div");
+  icon.className = "system-icon";
+  icon.textContent = "!";
+
+  const systemText = document.createElement("div");
+  systemText.className = "system-text";
+
+  const strong = document.createElement("strong");
+  strong.textContent = "SYSTEME";
+  systemText.appendChild(strong);
+  systemText.appendChild(document.createElement("br"));
+  systemText.appendChild(document.createTextNode(String(text || "")));
+
+  messageDiv.appendChild(icon);
+  messageDiv.appendChild(systemText);
+
+  chatContainer.appendChild(messageDiv);
+  scrollToBottom();
+}
+
+function showTypingIndicator() {
+  typingIndicator.style.display = "flex";
+}
+
+function hideTypingIndicator() {
+  typingIndicator.style.display = "none";
+}
+
+function disableInput() {
+  userInput.disabled = true;
+  sendButton.disabled = true;
+  userInput.placeholder = "Connexion interrompue";
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+window.addEventListener("error", (event) => {
+  console.error("Global error:", event.error);
 });
 
-startLogin();
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("Unhandled promise rejection:", event.reason);
+});
