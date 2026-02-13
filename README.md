@@ -57,6 +57,7 @@ npm start
 - `LLM_MODEL` (optionnel, pour override)
 - `LLM_API_URL` (optionnel, pour override)
 - `LLM_TIMEOUT_MS` (optionnel, default: `60000`)
+- `LLM_FREQUENCY_PENALTY` (optionnel, a definir seulement si le provider le supporte)
 
 ## Deploy Render
 
