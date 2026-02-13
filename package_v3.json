@@ -1,0 +1,27 @@
+{
+  "name": "clara-orion-2032",
+  "version": "3.0.0",
+  "type": "module",
+  "description": "Clara - Interface sécurisée ORION 2032 (Version 3 Immersive)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "orion",
+    "clara",
+    "chatbot",
+    "deepseek",
+    "immersive"
+  ],
+  "author": "Ahmed Messaoudi",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

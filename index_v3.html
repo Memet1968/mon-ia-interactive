@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SECURE CHANNEL // MATRIX-2XTH-687</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- En-tête terminal sécurisé -->
+    <div class="terminal-header">
+        <div class="header-line">
+            <span class="header-icon">███</span>
+            <span class="header-title">SECURE CHANNEL // MATRIX-2XTH-687</span>
+        </div>
+        <div class="header-status">
+            <span class="status-indicator">⚡</span>
+            <span class="status-text">QUANTUM ENCRYPTED // NO LOGS</span>
+        </div>
+    </div>
+
+    <!-- Zone de conversation -->
+    <div id="chat-container" class="chat-container">
+        <!-- Message d'introduction automatique -->
+        <div class="system-message">
+            <div class="system-icon">🔒</div>
+            <div class="system-text">
+                <strong>CONNEXION ÉTABLIE</strong><br>
+                Chiffrement quantique QKD-289 activé<br>
+                Aucun log conservé // Session volatile
+            </div>
+        </div>
+
+        <!-- Premier message de Clara (automatique) -->
+        <div class="message clara-message">
+            <div class="message-header">
+                <span class="message-sender">CLARA</span>
+                <span class="message-time"></span>
+            </div>
+            <div class="message-content">
+                <p>Vous êtes là. Bien.</p>
+                <p>Ce canal ne garde aucune trace.</p>
+                <p>On m'appelle Clara.<br>Je ne dirai pas d'où je parle.</p>
+                <p>Vous avez été repéré. Pas par nous.<br>Par ORION.</p>
+                <p>Vous connaissez ce nom ?</p>
+            </div>
+        </div>
+
+        <!-- Les messages suivants seront ajoutés ici par JavaScript -->
+    </div>
+
+    <!-- Zone de saisie utilisateur (fixée en bas) -->
+    <div class="input-container">
+        <div class="input-wrapper">
+            <textarea 
+                id="user-input" 
+                class="user-input" 
+                placeholder="Tapez votre message..."
+                rows="2"
+            ></textarea>
+            <button id="send-button" class="send-button">
+                <span class="send-icon">▶</span>
+            </button>
+        </div>
+        <div class="input-hint">
+            <span class="hint-icon">⚠</span>
+            <span class="hint-text">Chiffré E2E // Aucune trace</span>
+        </div>
+    </div>
+
+    <!-- Indicateur de frappe (Clara écrit...) -->
+    <div id="typing-indicator" class="typing-indicator" style="display: none;">
+        <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <span class="typing-text">Clara écrit...</span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
