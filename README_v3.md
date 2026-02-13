@@ -7,7 +7,7 @@
 
 ### ✅ Améliorations majeures
 
-1. **API DeepSeek** (au lieu de Gemini)
+1. **API LLM** (au lieu de Gemini)
    - Meilleur pour le roleplay immersif
    - Gratuit avec limites généreuses
    - Plus cohérent dans la personnalité
@@ -36,7 +36,7 @@
 
 ```
 clara-orion-2032-v3/
-├── server.js                  # Backend DeepSeek (NOUVEAU)
+├── server.js                  # Backend LLM (NOUVEAU)
 ├── clara_prompt_v3.txt       # Persona immersif (NOUVEAU)
 ├── orion_lore_v3.txt         # Base connaissances (NOUVEAU)
 ├── package.json              # Dépendances (mis à jour)
@@ -95,9 +95,9 @@ clara-orion-2032-v3/
    cp /chemin/vers/package_v3.json package.json
    ```
 
-### Étape 2 : Obtenir une clé API DeepSeek
+### Étape 2 : Obtenir une clé API LLM
 
-1. **Créer un compte** : https://platform.deepseek.com
+1. **Créer un compte** : https://platform.llm.com
 2. **Aller dans "API Keys"**
 3. **Créer une nouvelle clé** (copier et sauvegarder)
 
@@ -106,16 +106,16 @@ clara-orion-2032-v3/
 **Option A - Variable d'environnement (recommandé) :**
 ```bash
 # Mac/Linux
-export DEEPSEEK_API_KEY="sk-votre-cle-ici"
+export LLM_API_KEY="sk-votre-cle-ici"
 
 # Windows (PowerShell)
-$env:DEEPSEEK_API_KEY="sk-votre-cle-ici"
+$env:LLM_API_KEY="sk-votre-cle-ici"
 ```
 
 **Option B - Fichier .env (plus pratique) :**
 ```bash
 # Créer un fichier .env à la racine
-echo "DEEPSEEK_API_KEY=sk-votre-cle-ici" > .env
+echo "LLM_API_KEY=sk-votre-cle-ici" > .env
 ```
 
 Puis installer dotenv :
@@ -157,7 +157,7 @@ Réponse attendue :
 ```json
 {
   "ok": true,
-  "model": "deepseek-chat",
+  "model": "llm-chat",
   "hasApiKey": true
 }
 ```
@@ -241,7 +241,7 @@ git init
 git add .
 
 # Commit
-git commit -m "Version 3 - Interface immersive + DeepSeek"
+git commit -m "Version 3 - Interface immersive + LLM"
 
 # Ajouter le remote (remplacer par votre repo)
 git remote add origin https://github.com/votre-username/clara-orion-2032.git
@@ -268,8 +268,8 @@ Dans les settings du service Render :
 
 1. **Aller dans "Environment"**
 2. **Ajouter une variable :**
-   - **Key:** `DEEPSEEK_API_KEY`
-   - **Value:** `sk-votre-cle-deepseek`
+   - **Key:** `LLM_API_KEY`
+   - **Value:** `sk-votre-cle-llm`
 3. **Sauvegarder**
 
 ### Étape 4 : Déployer
@@ -319,26 +319,26 @@ Ou encore mieux : **supprimer ce message** et laisser Clara se présenter via l'
 
 ## 🐛 DÉPANNAGE
 
-### Erreur : "Missing DEEPSEEK_API_KEY"
+### Erreur : "Missing LLM_API_KEY"
 
 **Cause :** La clé API n'est pas configurée
 
 **Solution :**
 ```bash
 # Vérifier que la variable existe
-echo $DEEPSEEK_API_KEY  # Mac/Linux
-echo $env:DEEPSEEK_API_KEY  # Windows
+echo $LLM_API_KEY  # Mac/Linux
+echo $env:LLM_API_KEY  # Windows
 
 # Si vide, la redéfinir
-export DEEPSEEK_API_KEY="sk-..."
+export LLM_API_KEY="sk-..."
 ```
 
-### Erreur : "DeepSeek HTTP 401"
+### Erreur : "LLM HTTP 401"
 
 **Cause :** Clé API invalide ou expirée
 
 **Solution :**
-1. Vérifier la clé sur https://platform.deepseek.com
+1. Vérifier la clé sur https://platform.llm.com
 2. Régénérer une nouvelle clé
 3. Mettre à jour la variable d'environnement
 
@@ -393,9 +393,9 @@ Dans `styles.css`, vérifier lignes 85-88 :
 
 ## 📊 COMPARAISON DES VERSIONS
 
-| Fonctionnalité | v1 (Gemini) | v3 (DeepSeek) |
+| Fonctionnalité | v1 (Gemini) | v3 (LLM) |
 |----------------|-------------|---------------|
-| API | Gemini | DeepSeek |
+| API | Gemini | LLM |
 | Coût | Gratuit | Gratuit |
 | Persona | Bibliothécaire technique | Clara immersive |
 | Univers | Absent | Complet (H0/H1/H2, MODUS, etc.) |
@@ -415,7 +415,7 @@ Dans `styles.css`, vérifier lignes 85-88 :
 **En cas de problème :**
 1. Vérifier les logs du serveur (`npm start`)
 2. Tester `/health` endpoint
-3. Vérifier la clé API DeepSeek
+3. Vérifier la clé API LLM
 4. Comparer avec les exemples de ce guide
 
 ---

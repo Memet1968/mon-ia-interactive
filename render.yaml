@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: clara-orion-2032
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: LLM_API_KEY
+        sync: false

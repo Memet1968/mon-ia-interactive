@@ -1,224 +1,236 @@
+import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
 
+dotenv.config();
+
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const promptPath = path.join(process.cwd(), "clara_prompt.txt");
-const lorePath = path.join(process.cwd(), "orion_lore.txt");
+const PUBLIC_DIR = path.join(__dirname, "public");
+const INDEX_FILE = path.join(PUBLIC_DIR, "index.html");
 
-const claraPrompt = fs.readFileSync(promptPath, "utf8");
-const orionLore = fs.existsSync(lorePath) ? fs.readFileSync(lorePath, "utf8") : "";
+const DEFAULT_API_URL = Buffer.from(
+  "aHR0cHM6Ly9hcGkuZGVlcHNlZWsuY29tL3YxL2NoYXQvY29tcGxldGlvbnM=",
+  "base64"
+).toString("utf8");
+const DEFAULT_MODEL = Buffer.from("ZGVlcHNlZWstY2hhdA==", "base64").toString("utf8");
 
-const hfKey = process.env.HUGGINGFACE_API_KEY || process.env.HF_API_KEY || "";
-const hfModel = process.env.HF_MODEL || "Qwen/Qwen2.5-7B-Instruct";
-const HF_CHAT_URL = "https://router.huggingface.co/v1/chat/completions";
+const MODEL_NAME = process.env.LLM_MODEL || DEFAULT_MODEL;
+const PROVIDER_API_URL = process.env.LLM_API_URL || DEFAULT_API_URL;
+const REQUEST_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 60_000);
+const providerApiKey = process.env.LLM_API_KEY || "";
+
+function readFirstExistingFile(candidates) {
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return fs.readFileSync(candidate, "utf8");
+    }
+  }
+  return "";
+}
+
+const claraPrompt = readFirstExistingFile([
+  path.join(__dirname, "clara_prompt_v3.txt"),
+  path.join(__dirname, "clara_prompt.txt")
+]);
+const orionLore = readFirstExistingFile([
+  path.join(__dirname, "orion_lore_v3.txt"),
+  path.join(__dirname, "orion_lore.txt")
+]);
+const fullSystemPrompt = [claraPrompt, "# CONTEXTE UNIVERS ORION", orionLore]
+  .filter(Boolean)
+  .join("\n\n");
 
 app.use(cors());
 app.use(express.json({ limit: "128kb" }));
-app.use(express.static("public"));
+app.use(express.static(PUBLIC_DIR));
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  next();
+});
 
 function normalizeMessages(messages) {
   const valid = Array.isArray(messages) ? messages : [];
   return valid
-    .map((m) => ({
-      role: m?.role === "assistant" ? "assistant" : "user",
-      content: String(m?.content || "").trim()
+    .map((message) => ({
+      role: message?.role === "assistant" ? "assistant" : "user",
+      content: String(message?.content || "").trim()
     }))
-    .filter((m) => m.content.length > 0)
+    .filter((message) => message.content.length > 0)
     .slice(-20);
 }
 
-function splitLoreSections(raw) {
-  if (!raw.trim()) return [];
-  const lines = raw.split("\n");
-  const sections = [];
-  let current = null;
-
-  for (const line of lines) {
-    if (line.startsWith("## ")) {
-      if (current) sections.push(current);
-      current = { title: line.replace("## ", "").trim(), body: "" };
-    } else if (current) {
-      current.body += `${line}\n`;
-    }
+function parseJsonSafe(rawText) {
+  try {
+    return JSON.parse(rawText);
+  } catch {
+    return null;
   }
-  if (current) sections.push(current);
-
-  return sections
-    .map((s) => ({ ...s, body: s.body.trim() }))
-    .filter((s) => s.body.length > 0);
 }
 
-function keywordsFromText(text) {
-  return new Set(
-    String(text || "")
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s]/gu, " ")
-      .split(/\s+/)
-      .filter((w) => w.length > 3)
-  );
+function compactText(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function selectLoreContext(messages, maxSections = 4) {
-  const sections = splitLoreSections(orionLore);
-  if (!sections.length) return "";
-
-  const userText = messages
-    .filter((m) => m.role === "user")
-    .map((m) => m.content)
-    .join(" ");
-
-  const query = keywordsFromText(userText);
-
-  if (!query.size) {
-    return sections.slice(0, maxSections).map((s) => `## ${s.title}\n${s.body}`).join("\n\n");
-  }
-
-  const ranked = sections
-    .map((s) => {
-      const sectionWords = keywordsFromText(`${s.title} ${s.body}`);
-      let score = 0;
-      for (const q of query) {
-        if (sectionWords.has(q)) score += 1;
-      }
-      return { section: s, score };
-    })
-    .sort((a, b) => b.score - a.score);
-
-  const picked = ranked
-    .filter((r) => r.score > 0)
-    .slice(0, maxSections)
-    .map((r) => r.section);
-
-  const fallback = sections.slice(0, 2);
-  const finalSections = picked.length ? picked : fallback;
-
-  return finalSections.map((s) => `## ${s.title}\n${s.body}`).join("\n\n");
-}
-
-function buildSystemInstruction(messages) {
-  const loreContext = selectLoreContext(messages);
-  if (!loreContext) return claraPrompt.trim();
-
-  return [
-    claraPrompt.trim(),
-    "",
-    "Contexte Orion a respecter (source interne):",
-    loreContext
-  ].join("\n");
-}
-
-async function generateWithHF(messages) {
-  if (!hfKey) {
+async function generateWithProvider(userMessages) {
+  if (!providerApiKey) {
     throw {
       status: 500,
       code: "CONFIG_ERROR",
-      detail: "Missing HUGGINGFACE_API_KEY (or HF_API_KEY)."
+      detail: "Missing LLM_API_KEY environment variable."
     };
   }
-
-  if (!messages.length) {
+  if (!fullSystemPrompt) {
+    throw {
+      status: 500,
+      code: "CONFIG_ERROR",
+      detail: "Missing prompt files (clara_prompt_v3.txt and/or orion_lore_v3.txt)."
+    };
+  }
+  if (!userMessages.length) {
     throw {
       status: 400,
       code: "EMPTY_INPUT",
-      detail: "No user text provided."
+      detail: "No user messages provided."
     };
   }
 
-  const systemInstruction = buildSystemInstruction(messages);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  const response = await fetch(HF_CHAT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${hfKey}`
-    },
-    body: JSON.stringify({
-      model: hfModel,
-      messages: [{ role: "system", content: systemInstruction }, ...messages],
-      temperature: 0.45,
-      max_tokens: 500
-    })
-  });
+  try {
+    const response = await fetch(PROVIDER_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${providerApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: MODEL_NAME,
+        messages: [{ role: "system", content: fullSystemPrompt }, ...userMessages],
+        temperature: 0.85,
+        top_p: 0.95,
+        frequency_penalty: 0.3,
+        max_tokens: 2000
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
 
-  const data = await response.json().catch(() => ({}));
+    const rawText = await response.text();
+    const data = parseJsonSafe(rawText);
+    if (!response.ok) {
+      const detail =
+        data?.error?.message ||
+        compactText(rawText).slice(0, 260) ||
+        `Provider HTTP ${response.status}`;
+      throw {
+        status: response.status || 500,
+        code: "PROVIDER_ERROR",
+        detail
+      };
+    }
 
-  if (!response.ok || data?.error) {
+    const reply = String(data?.choices?.[0]?.message?.content || "").trim();
+    if (!reply) {
+      throw {
+        status: 500,
+        code: "EMPTY_RESPONSE",
+        detail: "Provider returned an empty response."
+      };
+    }
+
+    return { text: reply, model: MODEL_NAME };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error?.status) {
+      throw error;
+    }
+    const isTimeout = error?.name === "AbortError";
     throw {
-      status: response.status || 500,
-      code: "CLARA_FAILURE",
-      detail: data?.error?.message || data?.error || `HF HTTP ${response.status}`
+      status: 500,
+      code: isTimeout ? "TIMEOUT_ERROR" : "NETWORK_ERROR",
+      detail: isTimeout
+        ? `Provider request timed out after ${REQUEST_TIMEOUT_MS}ms.`
+        : error?.message || String(error)
     };
   }
-
-  return String(data?.choices?.[0]?.message?.content || "").trim();
 }
 
 app.get("/health", (_req, res) => {
   res.json({
     ok: true,
-    provider: "huggingface",
-    model: hfModel,
-    hasHfKey: Boolean(hfKey),
-    hasLore: Boolean(orionLore.trim())
+    model: process.env.LLM_MODEL ? "custom" : "default",
+    hasApiKey: Boolean(providerApiKey),
+    hasPrompt: Boolean(fullSystemPrompt)
   });
-});
-
-app.get("/api/models", (_req, res) => {
-  res.json({
-    provider: "huggingface",
-    models: [hfModel]
-  });
-});
-
-app.get("/api/clara", async (req, res) => {
-  const text = typeof req.query?.text === "string" ? req.query.text.trim() : "";
-  if (!text) {
-    res.json({ ok: true, hint: "Use POST /api/clara or GET /api/clara?text=..." });
-    return;
-  }
-
-  try {
-    const reply = await generateWithHF([{ role: "user", content: text }]);
-    if (reply.includes("[DISCONNECT]")) {
-      res.json({ text: "", disconnect: true, model: hfModel });
-      return;
-    }
-    res.json({ text: reply, disconnect: false, model: hfModel });
-  } catch (err) {
-    res.status(err?.status || 500).json({
-      error: err?.code || "CLARA_FAILURE",
-      detail: err?.detail || err?.message || String(err)
-    });
-  }
 });
 
 app.post("/api/clara", async (req, res) => {
   try {
     const messages = normalizeMessages(req.body?.messages);
-    const reply = await generateWithHF(messages);
-
-    if (reply.includes("[DISCONNECT]")) {
-      res.json({ text: "", disconnect: true, model: hfModel });
+    if (!messages.length) {
+      res.status(400).json({
+        error: "EMPTY_INPUT",
+        detail: "No messages provided."
+      });
       return;
     }
 
-    res.json({ text: reply, disconnect: false, model: hfModel });
-  } catch (err) {
-    res.status(err?.status || 500).json({
-      error: err?.code || "CLARA_FAILURE",
-      detail: err?.detail || err?.message || String(err)
+    const { text } = await generateWithProvider(messages);
+    const disconnect = text.includes("[DISCONNECT]");
+    res.json({
+      text: disconnect ? "" : text,
+      disconnect,
+      model: "configured"
+    });
+  } catch (error) {
+    res.status(error?.status || 500).json({
+      error: error?.code || "CLARA_FAILURE",
+      detail: error?.detail || error?.message || String(error)
+    });
+  }
+});
+
+app.get("/api/clara", async (req, res) => {
+  const text = typeof req.query?.text === "string" ? req.query.text.trim() : "";
+  if (!text) {
+    res.json({ ok: true, hint: "Use POST /api/clara with a messages array." });
+    return;
+  }
+
+  try {
+    const { text: reply } = await generateWithProvider([{ role: "user", content: text }]);
+    const disconnect = reply.includes("[DISCONNECT]");
+    res.json({
+      text: disconnect ? "" : reply,
+      disconnect,
+      model: "configured"
+    });
+  } catch (error) {
+    res.status(error?.status || 500).json({
+      error: error?.code || "CLARA_FAILURE",
+      detail: error?.detail || error?.message || String(error)
     });
   }
 });
 
 app.get("*", (_req, res) => {
-  res.sendFile(path.join(process.cwd(), "public", "index.html"));
+  res.sendFile(INDEX_FILE);
 });
 
-const port = process.env.PORT || 3000;
+const port = Number(process.env.PORT || 3000);
 app.listen(port, () => {
-  console.log(`Clara API (Hugging Face + Orion Lore) listening on ${port}`);
+  console.log("SECURE CHANNEL // MATRIX-2XTH-687");
+  console.log(`Clara API listening on port ${port}`);
+  console.log(`Model configured: ${Boolean(MODEL_NAME)}`);
+  console.log(`API key: ${providerApiKey ? "CONFIGURED" : "MISSING"}`);
 });

@@ -17,8 +17,8 @@ const orionLore = fs.readFileSync(lorePath, "utf8");
 // Combiner persona + univers
 const fullSystemPrompt = claraPrompt + "\n\n# CONTEXTE UNIVERS ORION\n\n" + orionLore;
 
-// Clé API DeepSeek
-const deepseekKey = process.env.DEEPSEEK_API_KEY || "";
+// Clé API LLM
+const llmKey = process.env.LLM_API_KEY || "";
 
 app.use(cors());
 app.use(express.json({ limit: "128kb" }));
@@ -39,12 +39,12 @@ function normalizeMessages(messages) {
     .slice(-20); // Garder les 20 derniers messages
 }
 
-async function generateWithDeepSeek(userMessages) {
-  if (!deepseekKey) {
+async function generateWithLLM(userMessages) {
+  if (!llmKey) {
     throw {
       status: 500,
       code: "CONFIG_ERROR",
-      detail: "Missing DEEPSEEK_API_KEY environment variable"
+      detail: "Missing LLM_API_KEY environment variable"
     };
   }
 
@@ -56,21 +56,21 @@ async function generateWithDeepSeek(userMessages) {
     };
   }
 
-  // Construire le tableau de messages pour DeepSeek
+  // Construire le tableau de messages pour LLM
   const messages = [
     { role: "system", content: fullSystemPrompt },
     ...userMessages
   ];
 
   try {
-    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    const response = await fetch("https://api.llm.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${deepseekKey}`,
+        "Authorization": `Bearer ${llmKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: "llm-chat",
         messages: messages,
         temperature: 0.85, // Pour un roleplay naturel et varié
         max_tokens: 2000,
@@ -81,7 +81,7 @@ async function generateWithDeepSeek(userMessages) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      let errorDetail = `DeepSeek HTTP ${response.status}`;
+      let errorDetail = `LLM HTTP ${response.status}`;
       try {
         const errorData = JSON.parse(errorText);
         errorDetail = errorData?.error?.message || errorText.slice(0, 200);
@@ -91,7 +91,7 @@ async function generateWithDeepSeek(userMessages) {
 
       throw {
         status: response.status,
-        code: "DEEPSEEK_ERROR",
+        code: "LLM_ERROR",
         detail: errorDetail
       };
     }
@@ -103,11 +103,11 @@ async function generateWithDeepSeek(userMessages) {
       throw {
         status: 500,
         code: "EMPTY_RESPONSE",
-        detail: "DeepSeek returned empty response"
+        detail: "LLM returned empty response"
       };
     }
 
-    return { text: reply, model: "deepseek-chat" };
+    return { text: reply, model: "llm-chat" };
   } catch (err) {
     if (err.status) {
       throw err;
@@ -127,8 +127,8 @@ async function generateWithDeepSeek(userMessages) {
 app.get("/health", (_req, res) => {
   res.json({ 
     ok: true, 
-    model: "deepseek-chat",
-    hasApiKey: !!deepseekKey 
+    model: "llm-chat",
+    hasApiKey: !!llmKey 
   });
 });
 
@@ -144,7 +144,7 @@ app.post("/api/clara", async (req, res) => {
       return;
     }
 
-    const { text, model } = await generateWithDeepSeek(messages);
+    const { text, model } = await generateWithLLM(messages);
     
     // Vérifier si Clara veut déconnecter (rare, mais possible)
     const disconnect = text.includes("[DISCONNECT]");
@@ -174,7 +174,7 @@ app.get("/api/clara", async (req, res) => {
   }
 
   try {
-    const { text: reply, model } = await generateWithDeepSeek([
+    const { text: reply, model } = await generateWithLLM([
       { role: "user", content: text }
     ]);
     res.json({ text: reply, model });
@@ -199,6 +199,6 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`🔒 SECURE CHANNEL // MATRIX-2XTH-687`);
   console.log(`⚡ Clara API listening on port ${port}`);
-  console.log(`🤖 Model: deepseek-chat`);
-  console.log(`🔑 API Key: ${deepseekKey ? "CONFIGURED" : "MISSING"}`);
+  console.log(`🤖 Model: llm-chat`);
+  console.log(`🔑 API Key: ${llmKey ? "CONFIGURED" : "MISSING"}`);
 });
